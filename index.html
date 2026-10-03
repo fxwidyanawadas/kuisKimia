@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuis Kimia Millionaire - SMA Kelas XII</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js CDN for 3D WebGL Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap');
+        
+        * {
+            font-family: 'Poppins', sans-serif;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #050b14;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Mobile Container Limit */
+        .mobile-frame {
+            max-width: 520px;
+            width: 100%;
+            min-height: 100vh;
+            margin: 0 auto;
+            position: relative;
+            background: rgba(10, 20, 40, 0.85);
+            backdrop-filter: blur(12px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 50px rgba(0, 150, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #webgl-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Hexagonal / Millionaire Button Styling */
+        .option-btn {
+            background: linear-gradient(180deg, #162447 0%, #0f172a 100%);
+            border: 2px solid #3b82f6;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option-btn:not(:disabled):hover, .option-btn:not(:disabled):active {
+            background: linear-gradient(180deg, #1d4ed8 0%, #1e40af 100%);
+            border-color: #60a5fa;
+            transform: scale(0.99);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+
+        .option-btn.selected {
+            background: linear-gradient(180deg, #d97706 0%, #b45309 100%) !important;
+            border-color: #f59e0b !important;
+            color: #ffffff;
+            animation: pulse-orange 1s infinite alternate;
+        }
+
+        .option-btn.correct {
+            background: linear-gradient(180deg, #15803d 0%, #166534 100%) !important;
+            border-color: #22c55e !important;
+            animation: glow-green 0.6s ease-in-out infinite alternate;
+        }
+
+        .option-btn.wrong {
+            background: linear-gradient(180deg, #b91c1c 0%, #991b1b 100%) !important;
+            border-color: #ef4444 !important;
+        }
+
+        @keyframes pulse-orange {
+            from { box-shadow: 0 0 5px #f59e0b; }
+            to { box-shadow: 0 0 20px #f59e0b; }
+        }
+
+        @keyframes glow-green {
+            from { box-shadow: 0 0 5px #22c55e; }
+            to { box-shadow: 0 0 25px #22c55e; }
+        }
+
+        /* Gold Gradient Text */
+        .gold-text {
+            background: linear-gradient(135deg, #fef08a 0%, #f59e0b 50%, #d97706 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .lifeline-btn {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border: 2px solid #eab308;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(234, 179, 8, 0.2);
+        }
+
+        .lifeline-btn:not(:disabled):hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(234, 179, 8, 0.6);
+            background: #ca8a04;
+        }
+
+        .lifeline-btn:disabled {
+            opacity: 0.3;
+            border-color: #64748b;
+            filter: grayscale(100%);
+            cursor: not-allowed;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex justify-center items-center relative">
+
+    <canvas id="webgl-bg"></canvas>
+
+    <!-- MAIN MOBILE CONTAINER -->
+    <div class="mobile-frame z-10 flex flex-col justify-between p-4">
+
+        <!-- HEADER / NAVIGATION -->
+        <header class="flex justify-between items-center border-b border-blue-900/50 pb-3 mb-2">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-atom text-cyan-400 text-2xl animate-spin" style="animation-duration: 8s;"></i>
+                <div>
+                    <h1 class="text-xs font-bold tracking-widest text-cyan-400 uppercase">Kuis Kimia XII</h1>
+                    <p class="text-[10px] text-gray-400">Millionaire Edition</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="openLadderModal()" class="px-2.5 py-1 text-xs bg-blue-900/60 hover:bg-blue-800 border border-blue-500/40 rounded-lg text-blue-200 transition">
+                    <i class="fa-solid fa-layer-group mr-1"></i> Tangga
+                </button>
+                <button onclick="openSettingsModal()" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-slate-300 transition">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN VIEW SWITCHER -->
+        <main id="app-viewport" class="flex-1 flex flex-col justify-center">
+
+            <!-- VIEW 1: START SCREEN -->
+            <div id="start-view" class="flex flex-col items-center justify-center text-center py-6 space-y-6">
+                <div class="relative">
+                    <div class="w-28 h-28 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-500 to-yellow-500 p-1 animate-pulse">
+                        <div class="w-full h-full bg-slate-950 rounded-full flex items-center justify-center">
+                            <i class="fa-solid fa-flask text-5xl gold-text"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h2 class="text-2xl font-extrabold gold-text tracking-wide">WHO WANTS TO BE A</h2>
+                    <h3 class="text-3xl font-black text-cyan-400 tracking-wider">CHEMIST?</h3>
+                    <p class="text-xs text-gray-300 mt-2 max-w-xs">Uji pemahaman Kimia Kelas X, XI, & XII. Taklukkan 15 Soal menuju Rp 1 Miliar Poin!</p>
+                </div>
+
+                <div class="w-full space-y-3 px-4">
+                    <input type="text" id="player-name" placeholder="Masukkan Nama Siswa..." 
+                           class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-cyan-500/40 text-cyan-100 placeholder-gray-500 text-sm focus:outline-none focus:border-cyan-400 text-center font-semibold">
+                    
+                    <button onclick="startGame()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-slate-950 font-extrabold text-base shadow-lg shadow-yellow-500/30 hover:brightness-110 active:scale-95 transition">
+                        <i class="fa-solid fa-play mr-2"></i> MULAI PERMAINAN
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 w-full px-4 text-xs">
+                    <button onclick="openLeaderboardModal()" class="p-2.5 rounded-lg bg-slate-900/80 border border-slate-700 text-gray-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-trophy text-yellow-500 mr-1"></i> Leaderboard
+                    </button>
+                    <button onclick="openDataModal()" class="p-2.5 rounded-lg bg-slate-900/80 border border-slate-700 text-gray-300 hover:bg-slate-800">
+                        <i class="fa-solid fa-database text-cyan-400 mr-1"></i> Data Soal (JSON)
+                    </button>
+                </div>
+            </div>
+
+            <!-- VIEW 2: GAMEPLAY SCREEN -->
+            <div id="game-view" class="hidden flex-col justify-between h-full space-y-4">
+                <!-- TOP STATUS & LIFELINES -->
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-blue-900/60 shadow-md">
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <span id="stage-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-900/80 text-indigo-300 border border-indigo-500/30">
+                                STAGE 1: KELAS X
+                            </span>
+                            <h4 id="question-number" class="text-sm font-bold text-cyan-300 mt-1">Soal 1 dari 15</h4>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-gray-400 block">Hadiah Saat Ini</span>
+                            <span id="current-prize" class="text-sm font-extrabold gold-text">Rp 1.000.000</span>
+                        </div>
+                    </div>
+
+                    <!-- LIFELINES BUTTONS -->
+                    <div class="flex justify-around items-center pt-2 border-t border-slate-800">
+                        <button id="lifeline-5050" onclick="useLifeline5050()" class="lifeline-btn" title="Bantuan 50:50">
+                            <span class="text-xs font-bold text-yellow-400">50:50</span>
+                        </button>
+                        <button id="lifeline-teacher" onclick="useLifelineTeacher()" class="lifeline-btn" title="Tanya Guru Kimia">
+                            <i class="fa-solid fa-user-graduate text-yellow-400"></i>
+                        </button>
+                        <button id="lifeline-audience" onclick="useLifelineAudience()" class="lifeline-btn" title="Suara Kelas (Audience Poll)">
+                            <i class="fa-solid fa-chart-column text-yellow-400"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- QUESTION BOX -->
+                <div class="bg-gradient-to-b from-blue-950/90 to-slate-900/90 p-4 rounded-xl border-2 border-cyan-500/40 shadow-xl min-h-[140px] flex items-center justify-center relative">
+                    <div class="absolute -top-3 px-3 py-0.5 bg-cyan-900 border border-cyan-400 rounded-full text-[10px] text-cyan-200 font-bold uppercase tracking-wider" id="topic-tag">
+                        Struktur Atom
+                    </div>
+                    <p id="question-text" class="text-sm font-semibold text-center leading-relaxed text-slate-100">
+                        Memuat pertanyaan...
+                    </p>
+                </div>
+
+                <!-- TIMER BAR -->
+                <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                    <div id="timer-bar" class="bg-gradient-to-r from-cyan-400 to-yellow-400 h-full w-full transition-all duration-1000"></div>
+                </div>
+
+                <!-- OPTIONS GRID (A, B, C, D) -->
+                <div class="grid grid-cols-1 gap-2.5">
+                    <button onclick="selectOption('A')" id="btn-opt-A" class="option-btn p-3 rounded-xl text-left flex items-center gap-3">
+                        <span class="w-7 h-7 rounded-lg bg-blue-900/80 border border-blue-400/50 flex items-center justify-center text-xs font-bold text-yellow-400 shrink-0">A</span>
+                        <span id="text-opt-A" class="text-xs text-slate-200 font-medium">Pilihan A</span>
+                    </button>
+                    <button onclick="selectOption('B')" id="btn-opt-B" class="option-btn p-3 rounded-xl text-left flex items-center gap-3">
+                        <span class="w-7 h-7 rounded-lg bg-blue-900/80 border border-blue-400/50 flex items-center justify-center text-xs font-bold text-yellow-400 shrink-0">B</span>
+                        <span id="text-opt-B" class="text-xs text-slate-200 font-medium">Pilihan B</span>
+                    </button>
+                    <button onclick="selectOption('C')" id="btn-opt-C" class="option-btn p-3 rounded-xl text-left flex items-center gap-3">
+                        <span class="w-7 h-7 rounded-lg bg-blue-900/80 border border-blue-400/50 flex items-center justify-center text-xs font-bold text-yellow-400 shrink-0">C</span>
+                        <span id="text-opt-C" class="text-xs text-slate-200 font-medium">Pilihan C</span>
+                    </button>
+                    <button onclick="selectOption('D')" id="btn-opt-D" class="option-btn p-3 rounded-xl text-left flex items-center gap-3">
+                        <span class="w-7 h-7 rounded-lg bg-blue-900/80 border border-blue-400/50 flex items-center justify-center text-xs font-bold text-yellow-400 shrink-0">D</span>
+                        <span id="text-opt-D" class="text-xs text-slate-200 font-medium">Pilihan D</span>
+                    </button>
+                </div>
+
+                <!-- ACTION BAR -->
+                <div class="flex justify-between items-center pt-2">
+                    <button onclick="walkAway()" class="px-3 py-2 bg-red-950/80 hover:bg-red-900 border border-red-600/50 text-red-300 rounded-lg text-xs font-semibold">
+                        <i class="fa-solid fa-door-open mr-1"></i> Menyerah (Ambil Hadiah)
+                    </button>
+                    <button id="lock-btn" onclick="confirmAnswer()" disabled class="px-5 py-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-40 disabled:hover:bg-yellow-500 text-slate-950 font-extrabold rounded-lg text-xs transition">
+                        Kunci Jawaban <i class="fa-solid fa-lock ml-1"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- VIEW 3: GAME OVER / RESULT -->
+            <div id="result-view" class="hidden flex-col items-center justify-center text-center py-6 space-y-5">
+                <div id="result-icon-box" class="w-24 h-24 rounded-full flex items-center justify-center text-4xl shadow-xl">
+                    <i id="result-icon" class="fa-solid fa-trophy"></i>
+                </div>
+
+                <div>
+                    <h3 id="result-title" class="text-2xl font-black text-white">HASIL PERMAINAN</h3>
+                    <p id="result-subtitle" class="text-xs text-gray-300 mt-1">Selamat atas pencapaian Anda!</p>
+                </div>
+
+                <div class="w-full bg-slate-900/90 p-4 rounded-xl border border-blue-800/50 space-y-3">
+                    <div class="flex justify-between items-center text-xs border-b border-slate-800 pb-2">
+                        <span class="text-gray-400">Nama Siswa:</span>
+                        <span id="res-player-name" class="font-bold text-cyan-300">Siswa</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs border-b border-slate-800 pb-2">
+                        <span class="text-gray-400">Soal Terjawab:</span>
+                        <span id="res-questions-cleared" class="font-bold text-white">0 / 15</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-gray-400">Total Poin / Hadiah:</span>
+                        <span id="res-final-prize" class="font-black text-base gold-text">Rp 0</span>
+                    </div>
+                </div>
+
+                <div class="w-full space-y-2">
+                    <button onclick="startGame()" class="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm transition">
+                        <i class="fa-solid fa-rotate-right mr-1"></i> Coba Lagi
+                    </button>
+                    <button onclick="showView('start-view')" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">
+                        Kembali ke Menu Utama
+                    </button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="text-center pt-3 mt-2 border-t border-slate-800 text-[10px] text-gray-400">
+            Kuis Gamifikasi Kimia SMA &copy; 2026 - Siap untuk GitHub Pages
+        </footer>
+    </div>
+
+    <!-- MODAL 1: TANGGA HADIAH (MONEY LADDER) -->
+    <div id="modal-ladder" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-cyan-500/40 rounded-2xl p-5 max-w-sm w-full space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 class="font-bold text-cyan-400 text-sm"><i class="fa-solid fa-layer-group mr-2"></i>Tangga Hadiah & Safe Zone</h3>
+                <button onclick="closeModal('modal-ladder')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="ladder-list" class="space-y-1 max-h-80 overflow-y-auto pr-1 text-xs">
+                <!-- Rendered dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: TANYA GURU (TEACHER HINT) -->
+    <div id="modal-teacher" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-yellow-500/50 rounded-2xl p-5 max-w-sm w-full space-y-3">
+            <div class="flex items-center gap-3 text-yellow-400 border-b border-slate-800 pb-3">
+                <i class="fa-solid fa-chalkboard-user text-2xl"></i>
+                <div>
+                    <h3 class="font-bold text-sm">Petunjuk dari Guru Kimia</h3>
+                    <p class="text-[10px] text-gray-400">Analisis & Katakunci Konsep</p>
+                </div>
+            </div>
+            <div id="teacher-hint-text" class="text-xs text-slate-200 leading-relaxed bg-slate-950 p-3 rounded-xl border border-slate-800 italic">
+                ...
+            </div>
+            <button onclick="closeModal('modal-teacher')" class="w-full py-2 bg-yellow-500 text-slate-950 font-bold text-xs rounded-lg">
+                Paham, Terima Kasih!
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 3: SUARA KELAS (AUDIENCE POLL) -->
+    <div id="modal-audience" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-indigo-500/50 rounded-2xl p-5 max-w-sm w-full space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h3 class="font-bold text-indigo-400 text-sm"><i class="fa-solid fa-chart-pie mr-2"></i>Hasil Poling Suara Kelas</h3>
+                <button onclick="closeModal('modal-audience')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="audience-poll-bars" class="space-y-2 text-xs">
+                <!-- Rendered dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: DATA MANAGEMENT (JSON EXPORT/IMPORT) -->
+    <div id="modal-data" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-cyan-500/50 rounded-2xl p-5 max-w-sm w-full space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 class="font-bold text-cyan-400 text-sm"><i class="fa-solid fa-database mr-2"></i>Kelola Data Soal & JSON</h3>
+                <button onclick="closeModal('modal-data')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="text-xs text-gray-300 leading-relaxed">
+                Anda dapat mengunduh seluruh bank soal & riwayat nilai dalam format JSON, atau mengimpor file JSON kuis buatan Anda sendiri.
+            </p>
+            <div class="space-y-2">
+                <button onclick="exportDataJSON()" class="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-download"></i> Unduh Data Kuis (.json)
+                </button>
+                <label class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-upload"></i> Impor Bank Soal JSON
+                    <input type="file" id="json-input" accept=".json" onchange="importDataJSON(event)" class="hidden">
+                </label>
+                <button onclick="resetDefaultQuestions()" class="w-full py-2 text-red-400 hover:text-red-300 text-[11px] underline text-center">
+                    Reset ke Bank Soal Default Guru
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: LEADERBOARD -->
+    <div id="modal-leaderboard" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-yellow-500/40 rounded-2xl p-5 max-w-sm w-full space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 class="font-bold text-yellow-400 text-sm"><i class="fa-solid fa-trophy mr-2"></i>Papan Skor Terbaik</h3>
+                <button onclick="closeModal('modal-leaderboard')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="leaderboard-list" class="space-y-1.5 max-h-64 overflow-y-auto pr-1 text-xs">
+                <!-- Dynamic leaderboard -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Web Audio API Synthesizer for SFX
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSound(type) {
+            try {
+                if (!audioCtx) audioCtx = new AudioCtx();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, now);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'correct') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                    osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.setValueAtTime(140, now + 0.15);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                } else if (type === 'lifeline') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.2);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                }
+            } catch (e) { console.log('Audio disabled/not supported'); }
+        }
+
+        // Three.js WebGL Interactive Background
+        function initWebGL() {
+            const canvas = document.getElementById('webgl-bg');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            // Central Nucleus
+            const nucleusGeo = new THREE.IcosahedronGeometry(1.5, 2);
+            const nucleusMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, wireframe: true, transparent: true, opacity: 0.6 });
+            const nucleus = new THREE.Mesh(nucleusGeo, nucleusMat);
+            scene.add(nucleus);
+
+            // Orbiting Ring 1
+            const ring1Geo = new THREE.TorusGeometry(3, 0.02, 16, 100);
+            const ring1Mat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.5 });
+            const ring1 = new THREE.Mesh(ring1Geo, ring1Mat);
+            ring1.rotation.x = Math.PI / 3;
+            scene.add(ring1);
+
+            // Orbiting Ring 2
+            const ring2Geo = new THREE.TorusGeometry(3.8, 0.02, 16, 100);
+            const ring2Mat = new THREE.MeshBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.5 });
+            const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
+            ring2.rotation.y = Math.PI / 4;
+            scene.add(ring2);
+
+            // Floating Chemistry Dust
+            const particlesGeo = new THREE.BufferGeometry();
+            const count = 120;
+            const posArray = new Float32Array(count * 3);
+            for(let i = 0; i < count * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 15;
+            }
+            particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const particlesMat = new THREE.PointsMaterial({ size: 0.05, color: 0x60a5fa, transparent: true, opacity: 0.8 });
+            const particlesMesh = new THREE.Points(particlesGeo, particlesMat);
+            scene.add(particlesMesh);
+
+            camera.position.z = 7;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                nucleus.rotation.y += 0.005;
+                nucleus.rotation.x += 0.003;
+                ring1.rotation.z += 0.01;
+                ring2.rotation.x += 0.008;
+                particlesMesh.rotation.y -= 0.001;
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        // Default Question Bank (15 Questions: X, XI, XII)
+        const DEFAULT_QUESTIONS = [
+            // STAGE 1: KELAS X (Soal 1 - 5)
+            {
+                id: 1, stage: 1, topic: "Struktur Atom",
+                question: "Unsur Natrium (Na) memiliki nomor atom 11 dan nomor massa 23. Berapakah jumlah elektron, proton, dan neutron secara berurutan?",
+                options: { A: "11, 11, 12", B: "11, 12, 11", C: "12, 11, 11", D: "11, 11, 23" },
+                answer: "A",
+                hint: "Proton = Nomor Atom, Elektron = Proton (atom netral), Neutron = Nomor Massa - Nomor Atom (23 - 11)."
+            },
+            {
+                id: 2, stage: 1, topic: "Sistem Periodik",
+                question: "Konfigurasi elektron unsur Kalsium (₂₀Ca) pada keadaan dasar menurut Bohr adalah...",
+                options: { A: "2, 8, 10", B: "2, 8, 8, 2", C: "2, 8, 9, 1", D: "2, 10, 8" },
+                answer: "B",
+                hint: "Pengisian kulit K=2, L=8, M=8, N=2. Kulit M tidak diisi 10 karena aturan kestabilan oktet."
+            },
+            {
+                id: 3, stage: 1, topic: "Ikatan Kimia",
+                question: "Senyawa berikut yang memiliki ikatan kovalen polar adalah...",
+                options: { A: "CH₄", B: "N₂", C: "H₂O", D: "O₂" },
+                answer: "C",
+                hint: "H₂O bersifat asimetris dan memiliki Pasangan Elektron Bebas (PEB) pada atom pusat O."
+            },
+            {
+                id: 4, stage: 1, topic: "Stoikiometri",
+                question: "Berapakah jumlah mol dari 18 gram air (H₂O)? (Ar H=1, O=16)",
+                options: { A: "0,5 mol", B: "1 mol", C: "2 mol", D: "18 mol" },
+                answer: "B",
+                hint: "Mr H₂O = (2x1) + 16 = 18 g/mol. Mol = Massa / Mr = 18 / 18."
+            },
+            {
+                id: 5, stage: 1, topic: "Tata Nama Senyawa",
+                question: "Nama IUPAC yang tepat untuk senyawa kimia dengan rumus Fe₂O₃ adalah...",
+                options: { A: "Besi(II) Oksida", B: "Besi(III) Oksida", C: "Dibesi Trioksida", D: "Besi Oksida" },
+                answer: "B",
+                hint: "Besi memiliki biloks +3 pada Fe₂O₃ (2x + 3(-2) = 0 -> x = +3)."
+            },
+
+            // STAGE 2: KELAS XI (Soal 6 - 10)
+            {
+                id: 6, stage: 2, topic: "Termokimia",
+                question: "Reaksi pembakaran CH₄ membebaskan kalor sebesar 890 kJ/mol. Pernyataan nilai ΔH yang tepat adalah...",
+                options: { A: "ΔH = +890 kJ/mol (Endoterm)", B: "ΔH = -890 kJ/mol (Eksoterm)", C: "ΔH = 0", D: "ΔH = +445 kJ/mol" },
+                answer: "B",
+                hint: "Reaksi yang membebaskan/melepas kalor ke lingkungan adalah eksoterm (ΔH bernilai negatif)."
+            },
+            {
+                id: 7, stage: 2, topic: "Laju Reaksi",
+                question: "Faktor yang menyebabkan kenaikan suhu mempercepat laju reaksi adalah...",
+                options: { A: "Menurunkan energi aktivasi", B: "Meningkatkan energi kinetik partikel", C: "Menambah konsentrasi reaktan", D: "Memperluas permukaan" },
+                answer: "B",
+                hint: "Kenaikan suhu membuat partikel bergerak lebih cepat sehingga energi kinetik dan tumbukan efektif meningkat."
+            },
+            {
+                id: 8, stage: 2, topic: "Kesetimbangan Kimia",
+                question: "Pada reaksi N₂(g) + 3H₂(g) ⇌ 2NH₃(g) (ΔH negative), agar hasil NH₃ maksimal maka dilakukan...",
+                options: { A: "Suhu dinaikkan & tekanan diturunkan", B: "Suhu diturunkan & tekanan dinaikkan", C: "Volume diperbesar", D: "Ditambahkan katalis saja" },
+                answer: "B",
+                hint: "Eksoterm bergeser ke kanan jika suhu diturunkan. Koefisien kanan lebih kecil (2 < 4) sehingga butuh tekanan tinggi."
+            },
+            {
+                id: 9, stage: 2, topic: "Asam Basa",
+                question: "Berapa nilai pH larutan HCl 0,01 M?",
+                options: { A: "1", B: "2", C: "12", D: "13" },
+                answer: "B",
+                hint: "HCl adalah asam kuat. [H⁺] = M x valensi = 0,01 = 10⁻² M. pH = -log[H⁺] = 2."
+            },
+            {
+                id: 10, stage: 2, topic: "Larutan Penyangga",
+                question: "Campuran yang dapat membentuk larutan penyangga (buffer) asam adalah...",
+                options: { A: "CH₃COOH & CH₃COONa", B: "HCl & NaCl", C: "NaOH & NaCl", D: "NH₃ & HCl berlebih" },
+                answer: "A",
+                hint: "Buffer asam terdiri dari Asam Lemah (CH₃COOH) dan Basa Konjugasinya/Garamnya (CH₃COONa)."
+            },
+
+            // STAGE 3: KELAS XII (Soal 11 - 15)
+            {
+                id: 11, stage: 3, topic: "Sifat Koligatif",
+                question: "Tekanan osmotik larutan glukosa 0,1 M pada suhu 27°C (300 K) adalah... (R = 0,082 L.atm/mol.K)",
+                options: { A: "2,46 atm", B: "1,23 atm", C: "4,92 atm", D: "0,246 atm" },
+                answer: "A",
+                hint: "Rumus Tekanan Osmotik π = M x R x T = 0,1 x 0,082 x 300 = 2,46 atm."
+            },
+            {
+                id: 12, stage: 3, topic: "Redoks & Sel Volta",
+                question: "Diketahui E° Zn²⁺/Zn = -0,76 V dan E° Cu²⁺/Cu = +0,34 V. Berapakah Potensial Sel Standar (E°sel) yang dihasilkan?",
+                options: { A: "+0,42 V", B: "+1,10 V", C: "-1,10 V", D: "-0,42 V" },
+                answer: "B",
+                hint: "E°sel = E°katoda (lebih positif) - E°anoda = (+0,34) - (-0,76) = +1,10 Volt."
+            },
+            {
+                id: 13, stage: 3, topic: "Kimia Unsur",
+                question: "Unsur Halogen yang wujud fisiknya berupa zat padat berwarna hitam keunguan pada suhu kamar adalah...",
+                options: { A: "Fluorin (F₂)", B: "Klorin (Cl₂)", C: "Bromin (Br₂)", D: "Iodin (I₂)" },
+                answer: "D",
+                hint: "F₂ & Cl₂ berwujud gas, Br₂ cairan cokelat kemerahan, sedangkan I₂ adalah padatan ungu kehitaman."
+            },
+            {
+                id: 14, stage: 3, topic: "Kimia Organik",
+                question: "Senyawa organik dengan rumus molekul C₃H₆O yang dapat mereduksi pereaksi Fehling menghasilkan endapan merah bata adalah...",
+                options: { A: "Propanal (Aldehid)", B: "Propanon (Keton)", C: "Propanol (Alkohol)", D: "Asam Propanoat" },
+                answer: "A",
+                hint: "Aldehid (Propanal) bereaksi positif dengan Fehling, sedangkan Keton (Propanon) tidak."
+            },
+            {
+                id: 15, stage: 3, topic: "Makromolekul",
+                question: "Polimer sintetis yang terbentuk melalui reaksi polimerisasi adisi adalah...",
+                options: { A: "Nilon-66", B: "Polietilena", C: "Protein", D: "Kevlar" },
+                answer: "B",
+                hint: "Polietilena terbentuk dari pemutusan ikatan rangkap monomer etena (Adisi)."
+            }
+        ];
+
+        // PRIZE LADDER VALUES
+        const PRIZE_LADDER = [
+            { level: 15, prize: "Rp 1 MILIAR", safe: true },
+            { level: 14, prize: "Rp 500.000.000", safe: false },
+            { level: 13, prize: "Rp 250.000.000", safe: false },
+            { level: 12, prize: "Rp 125.000.000", safe: false },
+            { level: 11, prize: "Rp 64.000.000", safe: false },
+            { level: 10, prize: "Rp 32.000.000", safe: true },
+            { level: 9,  prize: "Rp 16.000.000", safe: false },
+            { level: 8,  prize: "Rp 8.000.000", safe: false },
+            { level: 7,  prize: "Rp 4.000.000", safe: false },
+            { level: 6,  prize: "Rp 2.000.000", safe: false },
+            { level: 5,  prize: "Rp 1.000.000", safe: true },
+            { level: 4,  prize: "Rp 500.000", safe: false },
+            { level: 3,  prize: "Rp 300.000", safe: false },
+            { level: 2,  prize: "Rp 200.000", safe: false },
+            { level: 1,  prize: "Rp 100.000", safe: false }
+        ];
+
+        // GAME STATE
+        let questions = [];
+        let currentQIndex = 0;
+        let selectedOption = null;
+        let playerName = "";
+        let lifelines = { '5050': true, 'teacher': true, 'audience': true };
+        let timerInterval = null;
+        let timeLeft = 60;
+
+        // LOCALSTORAGE INIT
+        function initStorage() {
+            if (!localStorage.getItem('kimia_questions')) {
+                localStorage.setItem('kimia_questions', JSON.stringify(DEFAULT_QUESTIONS));
+            }
+            if (!localStorage.getItem('kimia_leaderboard')) {
+                localStorage.setItem('kimia_leaderboard', JSON.stringify([]));
+            }
+            questions = JSON.parse(localStorage.getItem('kimia_questions'));
+        }
+
+        // VIEW ROUTER
+        function showView(viewId) {
+            ['start-view', 'game-view', 'result-view'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(viewId).classList.remove('hidden');
+            if(viewId === 'game-view') document.getElementById(viewId).style.display = 'flex';
+        }
+
+        // START GAME
+        function startGame() {
+            const inputName = document.getElementById('player-name').value.trim();
+            playerName = inputName || "Siswa Kimia";
+            
+            initStorage();
+            currentQIndex = 0;
+            selectedOption = null;
+            lifelines = { '5050': true, 'teacher': true, 'audience': true };
+            
+            updateLifelinesUI();
+            showView('game-view');
+            loadQuestion();
+            playSound('click');
+        }
+
+        // LOAD QUESTION
+        function loadQuestion() {
+            if (currentQIndex >= questions.length) {
+                endGame(true);
+                return;
+            }
+
+            const q = questions[currentQIndex];
+            selectedOption = null;
+            
+            // Reset option styling
+            ['A', 'B', 'C', 'D'].forEach(opt => {
+                const btn = document.getElementById(`btn-opt-${opt}`);
+                btn.className = "option-btn p-3 rounded-xl text-left flex items-center gap-3";
+                btn.disabled = false;
+                document.getElementById(`text-opt-${opt}`).innerText = q.options[opt];
+            });
+
+            document.getElementById('question-number').innerText = `Soal ${currentQIndex + 1} dari 15`;
+            document.getElementById('question-text').innerText = q.question;
+            document.getElementById('topic-tag').innerText = q.topic;
+            
+            const currentPrizeObj = PRIZE_LADDER.find(p => p.level === currentQIndex + 1);
+            document.getElementById('current-prize').innerText = currentPrizeObj ? currentPrizeObj.prize : "Rp 0";
+
+            // Stage badge
+            const stageBadge = document.getElementById('stage-badge');
+            if(q.stage === 1) stageBadge.innerText = "STAGE 1: KELAS X";
+            else if(q.stage === 2) stageBadge.innerText = "STAGE 2: KELAS XI";
+            else stageBadge.innerText = "STAGE 3: KELAS XII";
+
+            document.getElementById('lock-btn').disabled = true;
+
+            startTimer();
+        }
+
+        // TIMER
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeLeft = 60;
+            const bar = document.getElementById('timer-bar');
+            bar.style.width = '100%';
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                bar.style.width = `${(timeLeft / 60) * 100}%`;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    playSound('wrong');
+                    alert('Waktu habis!');
+                    endGame(false);
+                }
+            }, 1000);
+        }
+
+        // OPTION SELECTION
+        function selectOption(opt) {
+            playSound('click');
+            selectedOption = opt;
+            ['A', 'B', 'C', 'D'].forEach(o => {
+                const btn = document.getElementById(`btn-opt-${o}`);
+                if (o === opt) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+            document.getElementById('lock-btn').disabled = false;
+        }
+
+        // CONFIRM / LOCK ANSWER
+        function confirmAnswer() {
+            if (!selectedOption) return;
+            clearInterval(timerInterval);
+
+            const q = questions[currentQIndex];
+            const isCorrect = (selectedOption === q.answer);
+
+            const selectedBtn = document.getElementById(`btn-opt-${selectedOption}`);
+            selectedBtn.classList.remove('selected');
+
+            if (isCorrect) {
+                selectedBtn.classList.add('correct');
+                playSound('correct');
+
+                setTimeout(() => {
+                    currentQIndex++;
+                    if (currentQIndex < questions.length) {
+                        loadQuestion();
+                    } else {
+                        endGame(true);
+                    }
+                }, 1500);
+            } else {
+                selectedBtn.classList.add('wrong');
+                document.getElementById(`btn-opt-${q.answer}`).classList.add('correct');
+                playSound('wrong');
+
+                setTimeout(() => {
+                    endGame(false);
+                }, 2000);
+            }
+        }
+
+        // LIFELINE 1: 50:50
+        function useLifeline5050() {
+            if (!lifelines['5050']) return;
+            playSound('lifeline');
+            lifelines['5050'] = false;
+            updateLifelinesUI();
+
+            const q = questions[currentQIndex];
+            const wrongOptions = ['A', 'B', 'C', 'D'].filter(o => o !== q.answer);
+            
+            // Randomly remove 2 wrong options
+            const shuffled = wrongOptions.sort(() => 0.5 - Math.random());
+            const removed = shuffled.slice(0, 2);
+
+            removed.forEach(opt => {
+                const btn = document.getElementById(`btn-opt-${opt}`);
+                btn.disabled = true;
+                btn.style.opacity = '0.2';
+            });
+        }
+
+        // LIFELINE 2: TANYA GURU
+        function useLifelineTeacher() {
+            if (!lifelines['teacher']) return;
+            playSound('lifeline');
+            lifelines['teacher'] = false;
+            updateLifelinesUI();
+
+            const q = questions[currentQIndex];
+            document.getElementById('teacher-hint-text').innerText = `"${q.hint}"`;
+            document.getElementById('modal-teacher').classList.remove('hidden');
+        }
+
+        // LIFELINE 3: SUARA KELAS
+        function useLifelineAudience() {
+            if (!lifelines['audience']) return;
+            playSound('lifeline');
+            lifelines['audience'] = false;
+            updateLifelinesUI();
+
+            const q = questions[currentQIndex];
+            const correctOpt = q.answer;
+            
+            // Generate percentages leaning to correct answer
+            let percentages = { A: 10, B: 10, C: 10, D: 10 };
+            percentages[correctOpt] = Math.floor(Math.random() * 30) + 50; // 50% - 80%
+            let remaining = 100 - percentages[correctOpt];
+
+            ['A', 'B', 'C', 'D'].filter(o => o !== correctOpt).forEach((opt, idx, arr) => {
+                if (idx === arr.length - 1) {
+                    percentages[opt] = remaining;
+                } else {
+                    let share = Math.floor(Math.random() * remaining);
+                    percentages[opt] = share;
+                    remaining -= share;
+                }
+            });
+
+            const container = document.getElementById('audience-poll-bars');
+            container.innerHTML = '';
+
+            ['A', 'B', 'C', 'D'].forEach(opt => {
+                const pct = percentages[opt];
+                container.innerHTML += `
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-1">
+                            <span class="font-bold text-slate-300">Opsi ${opt}</span>
+                            <span class="font-bold text-indigo-400">${pct}%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                            <div class="bg-indigo-500 h-full rounded-full" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('modal-audience').classList.remove('hidden');
+        }
+
+        function updateLifelinesUI() {
+            document.getElementById('lifeline-5050').disabled = !lifelines['5050'];
+            document.getElementById('lifeline-teacher').disabled = !lifelines['teacher'];
+            document.getElementById('lifeline-audience').disabled = !lifelines['audience'];
+        }
+
+        // WALK AWAY (MENYERAH)
+        function walkAway() {
+            if (confirm("Apakah Anda yakin ingin menyerah dan membawa pulang hadiah aman saat ini?")) {
+                clearInterval(timerInterval);
+                endGame(false, true);
+            }
+        }
+
+        // END GAME & SAVE SCORE
+        function endGame(isGrandWinner, walkedAway = false) {
+            clearInterval(timerInterval);
+            showView('result-view');
+
+            let finalPrize = "Rp 0";
+            let cleared = currentQIndex;
+
+            if (isGrandWinner) {
+                finalPrize = "Rp 1 MILIAR";
+                cleared = 15;
+            } else if (walkedAway) {
+                finalPrize = currentQIndex > 0 ? PRIZE_LADDER.find(p => p.level === currentQIndex).prize : "Rp 0";
+            } else {
+                // Calculate Checkpoint Safe Zone
+                if (currentQIndex >= 10) finalPrize = "Rp 32.000.000";
+                else if (currentQIndex >= 5) finalPrize = "Rp 1.000.000";
+                else finalPrize = "Rp 0";
+            }
+
+            document.getElementById('res-player-name').innerText = playerName;
+            document.getElementById('res-questions-cleared').innerText = `${cleared} / 15`;
+            document.getElementById('res-final-prize').innerText = finalPrize;
+
+            const iconBox = document.getElementById('result-icon-box');
+            const icon = document.getElementById('result-icon');
+            const title = document.getElementById('result-title');
+
+            if (isGrandWinner || cleared >= 10) {
+                iconBox.className = "w-24 h-24 rounded-full flex items-center justify-center text-4xl shadow-xl bg-gradient-to-tr from-yellow-500 to-amber-300 text-slate-950";
+                icon.className = "fa-solid fa-trophy";
+                title.innerText = "LUAR BIASA! AHIR KIMIA";
+            } else {
+                iconBox.className = "w-24 h-24 rounded-full flex items-center justify-center text-4xl shadow-xl bg-slate-800 text-cyan-400 border border-cyan-500/40";
+                icon.className = "fa-solid fa-flask";
+                title.innerText = "PERMAINAN SELESAI";
+            }
+
+            // Save to Leaderboard LocalStorage
+            saveLeaderboard(playerName, finalPrize, cleared);
+        }
+
+        function saveLeaderboard(name, prize, cleared) {
+            let leaderboard = JSON.parse(localStorage.getItem('kimia_leaderboard')) || [];
+            leaderboard.push({
+                name: name,
+                prize: prize,
+                cleared: cleared,
+                date: new Date().toLocaleDateString('id-ID')
+            });
+            leaderboard.sort((a, b) => b.cleared - a.cleared);
+            localStorage.setItem('kimia_leaderboard', JSON.stringify(leaderboard.slice(0, 10)));
+        }
+
+        // JSON EXPORT & IMPORT
+        function exportDataJSON() {
+            const data = {
+                questions: JSON.parse(localStorage.getItem('kimia_questions')) || DEFAULT_QUESTIONS,
+                leaderboard: JSON.parse(localStorage.getItem('kimia_leaderboard')) || []
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `kuis_kimia_millionaire_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importDataJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (imported.questions && Array.isArray(imported.questions)) {
+                        localStorage.setItem('kimia_questions', JSON.stringify(imported.questions));
+                        if(imported.leaderboard) localStorage.setItem('kimia_leaderboard', JSON.stringify(imported.leaderboard));
+                        alert('Data soal JSON berhasil diimpor!');
+                        initStorage();
+                        closeModal('modal-data');
+                    } else {
+                        alert('Format JSON tidak valid. Wajib memiliki array "questions".');
+                    }
+                } catch (err) {
+                    alert('Gagal membaca file JSON.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function resetDefaultQuestions() {
+            if (confirm("Reset seluruh bank soal ke default dari Guru?")) {
+                localStorage.setItem('kimia_questions', JSON.stringify(DEFAULT_QUESTIONS));
+                initStorage();
+                alert("Bank soal dikembalikan ke default!");
+                closeModal('modal-data');
+            }
+        }
+
+        // MODAL HELPERS
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function openLadderModal() {
+            const container = document.getElementById('ladder-list');
+            container.innerHTML = '';
+            PRIZE_LADDER.forEach(item => {
+                const isCurrent = (currentQIndex + 1 === item.level);
+                container.innerHTML += `
+                    <div class="flex justify-between items-center p-2 rounded ${isCurrent ? 'bg-yellow-500/20 border border-yellow-500 font-bold' : 'bg-slate-950'} ${item.safe ? 'text-yellow-400' : 'text-slate-300'}">
+                        <span>Soal ${item.level} ${item.safe ? '★ (Safe Zone)' : ''}</span>
+                        <span class="font-extrabold">${item.prize}</span>
+                    </div>
+                `;
+            });
+            document.getElementById('modal-ladder').classList.remove('hidden');
+        }
+
+        function openDataModal() {
+            document.getElementById('modal-data').classList.remove('hidden');
+        }
+
+        function openLeaderboardModal() {
+            initStorage();
+            const list = JSON.parse(localStorage.getItem('kimia_leaderboard')) || [];
+            const container = document.getElementById('leaderboard-list');
+            container.innerHTML = '';
+
+            if (list.length === 0) {
+                container.innerHTML = `<p class="text-gray-400 text-center py-4">Belum ada catatan skor.</p>`;
+            } else {
+                list.forEach((item, index) => {
+                    container.innerHTML += `
+                        <div class="flex justify-between items-center p-2 bg-slate-950 rounded border border-slate-800">
+                            <div>
